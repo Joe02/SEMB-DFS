@@ -3,7 +3,7 @@
 ## Site para compilar os códigos: https://www.tutorialspoint.com/compile_c_online.php
 
 ## Gerador aleatório de relações : 
-
+```c
 #include <stdio.h>
 #include <time.h>
 
@@ -18,3 +18,4 @@ int main()
 
     return 0;
 }
+```
