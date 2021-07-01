@@ -1,7 +1,3 @@
-void setup() {
-  Serial.begin (4800);
-}
-
 /************************
 
    Algoritmo de Busca em profundidade
@@ -34,8 +30,43 @@ void setup() {
 //
 
 
+/* -------------------------------------------------------------------------------------------------------------------
 
+Modo de uso da aplicação:
+ 
+    Verificação de loopings em grafos, “Pathfinding” ( solução de problemas pela escolha dos melhores caminhos 
+    (Ex: Problema das rainhas)), ordenação topológica de nós em um grafo e distribuição hierárquica de processos, 
+    (Ex: “Smart compilation”).
 
+Fonte do código utilizado como referência:
+
+    https://www.geeksforgeeks.org/iterative-depth-first-traversal/
+
+Data:
+
+    30 de Junho de 2021.
+
+Entrada e saída do caso de teste:
+
+    Número de Vértices: N_NODES = 46.
+    Arestas: (0, 1) (1, 2) (2, 3) (3, 4) (4, 5) (5, 6) (6, 7) (7, 8) (8, 9) (9, 10) (10, 11) (11, 12) (12, 13) (13, 14) 
+    (14, 15) (15, 16) (16, 17) (17, 18) (18, 19) (19, 20) (20, 21) (21, 22) (22, 23) (23, 24) (24, 25) (25, 26) 
+    (26, 27) (27, 28) (28, 29) (28, 30) (29, 30) (29, 45) (30, 31) (31, 32) (32, 33) (33, 34) (34, 35) (35, 36) 
+    (36, 37) (37, 38) (38, 39) (39, 40) (40, 41) (41, 42) (42, 43) (43, 44) (44, 45)
+    
+    Cada aresta deve ser adicionada com a chamada da função addEdge(parâmetro1, parâmetro2).
+
+Método de avaliação dos testes:
+
+    Utilizamos o site GraphOnline.ru para validarmos nossa saída, nos baseando tanto no algoritmo de DFS implementado
+    no site.
+    Link para Grafo utilizado de teste  : http://graphonline.ru/en/?graph=ptiQsWDjlRYqoeMe
+------------------------------------------------------------------------------------------------------------------- */
+
+//Configurações iniciais para o Terminal Virtual do Arduino.
+void setup() {
+  Serial.begin (4800);
+}
 
 //Bibliotecas necessárias para o algoritmo.
 #include <stdio.h>
@@ -43,29 +74,54 @@ void setup() {
 #include <stdbool.h>
 #include <math.h>
 
+
+
 //Número máximo de Nodes. Também é a referência para a matriz de adjacências utilizada na verificação de relações.
 #define N_NODES 46
 #define UCHAR_BYTE_SIZE 8
 
+
+
 //Número correspondente à label do vértice-objetivo.
 #define N_TO_REACH 44
 
+
+
 //Vértice.
 typedef struct {
+
+  //Variável para identificação do vértice.  
   unsigned char label;
+
+
+  //Variável para identificação de visita do vértice.
   unsigned char visited;
-  unsigned char edges[N_NODES / UCHAR_BYTE_SIZE + 1]; // always take more than required
+
+
+  //Array com SETORES que guarda as relações (arestas) do vértice para com os demais.
+  unsigned char edges[N_NODES / UCHAR_BYTE_SIZE + 1];
 } Vertex;
 
 
 
 //----------------------------------Variáveis necessárias para a pilha.
 
+//Variável referente à pilha de vértices que será utilizada para "navegar".
 char stack[N_NODES];
+
+//Variável que guardará a referência da posição topo da pilha.
 char top = -1;
+
+//Variável contador simples para que possamos verificar o custo das caminhos.
 char counter = -1;
+
+//Variável que guardará o resultado com menor caminho.
 unsigned int bestSolution = 9999;
+
+//Array propriamente dito de Vértices.
 Vertex lstVertices[N_NODES];
+
+//Variável que servirá como Index para lista de Vértices.
 unsigned char vertexCount = 0;
 
 
@@ -74,11 +130,12 @@ unsigned char vertexCount = 0;
 //----------------------------------Funções da Pilha.
 
 //Adiciona um item a pilha.
+//Recebe como parâmetro um Char referente à label de um vértice.
 void push(char item) {
   stack[++top] = item;
 }
 
-//Remove o último item adicionado a pilha.
+//Retorna o valor do penúltimo item da lista para que o último possa ser desprezado e uma nova busca se inicie.
 int pop() {
   return stack[top--];
 }
@@ -97,38 +154,41 @@ bool isStackEmpty() {
 
 
 //----------------------------------Adiciona o vértice na lista de vértices.
-void addVertex(unsigned char label)
-{
+//Recebe e como parâmetro um Char que representa a futura label desse vértice.
+void addVertex(unsigned char label) {
+
+  //Cria a variável Vértice que será adicionada à lista.
   Vertex vertex;
   vertex.label = label;
   vertex.visited = 0;
+
+  //Contador para descobrir quantos vértices já existem na lista.
   for (int i = 0; i < N_NODES / UCHAR_BYTE_SIZE + 1; ++i) {
     vertex.edges[i] = 0;
   }
+
+  //Adição propriamente dita da lista.
   lstVertices[vertexCount++] = vertex;
 }
 
 
 
 //----------------------------------Adiciona uma relação entre 2 vértices
-// void addEdge(unsigned int start, unsigned int end)
-// {
-//     //Como estamos tratando de uma matriz de adjacências, é necessário criar relações bidirecionais para evitar que
-//     //um vértice seja acessado e após isso seja impossível de voltar para o anterior.
-//     lstVertices[start].edges[end] = 1;
-// }
-
+//Recebe como parâmetro dois inteiros que representam os vértices que seram ligados por uma aresta bidirecional.
 void addEdge(int start, int end) {
+
+  //Cálculo da primeira Seção. Variável calculada pelo piso da divisão entre o segundo vértice escolhido e o número de bytes necessário para guardar uma seção inteira.
   int section = floor(end / UCHAR_BYTE_SIZE);
   lstVertices[start].edges[section] = lstVertices[start].edges[section] | (1 << end % UCHAR_BYTE_SIZE);
 
-  // add the opposite edge here
+  //Cálculo da segunda Seção. Variável calculada pelo piso da divisão entre o segundo vértice escolhido e o número de bytes necessário para guardar uma seção inteira.
   section = floor(start / UCHAR_BYTE_SIZE);
   lstVertices[end].edges[section] = lstVertices[end].edges[section] | (1 << start % UCHAR_BYTE_SIZE);
 }
 
 
 //----------------------------------Printa o vértice.
+//Recebe como parâmetro o índice referente ao vértice para que o programa imprima a label do vértice.
 void displayVertex(unsigned char vertexIndex)
 {
   Serial.print(lstVertices[vertexIndex].label);
@@ -136,22 +196,25 @@ void displayVertex(unsigned char vertexIndex)
 }
 
 
-//----------------------------------Pega os próximos vértices (em ordem crescen de 0 a N) a partir do vértice atual.
+//----------------------------------Pega os próximos vértices (em ordem crescente de 0 a N) a partir do vértice atual.
+//A função recebe o vertice que é um uInt atual e a base do contador que é um Char e retorna um vertice não visitado
 int getAdjUnvisitedVertex(unsigned int vertexIndex, char baseCount) {
   int i;
-
+// Interage com cada vertice para pegar os vertices não visitado que se relacionam com o atual 
   for (i = 0; i < N_NODES / UCHAR_BYTE_SIZE + 1; i++) {
     int encoded_edges = lstVertices[(int)vertexIndex].edges[i];
+
     for (int j = 0; j < UCHAR_BYTE_SIZE; ++j)
     {
       int vertexIdx = i * UCHAR_BYTE_SIZE + j;
+//Caso não tenha sido visitado ainda , pode ser visitado
       if ((encoded_edges & ( 1 << j )) >> j == 1) {
         if (lstVertices[vertexIdx].visited == 0) {
 
           return (int)vertexIdx;
 
         }
-
+// Caso o vertice alcançou o nó desejado
         if (lstVertices[vertexIdx].label == N_TO_REACH) {
           if (baseCount + 1 < bestSolution) {
 
@@ -175,6 +238,7 @@ int getAdjUnvisitedVertex(unsigned int vertexIndex, char baseCount) {
 
 
 //----------------------------------Método de pesquisa em profundida.
+//Não recebe parâmetros , pois a lista que ele vai procurar ja foi instanciada, retorna de saída o melhor caminho e unidades desse caminho
 void depthFirstSearch() {
   unsigned char i;
 
@@ -235,10 +299,13 @@ void depthFirstSearch() {
 //----------------------------------Função Main
 //Aqui os vértices serão criados, assim como as relações.
 
+//A variável de runCode serve para que possamos ter um controle de rodar o código apenas uma vez.
 bool runCode = true;
 void loop() {
   while (runCode) {
     //---------------------------------- Início dos casos de teste.
+
+    //Adição dos vértices baseado na variável N_NODES definida no início do código.
     for (unsigned char aux = 0; aux < N_NODES; aux++) {
       addVertex(aux);
     }
@@ -246,6 +313,7 @@ void loop() {
     //Cria a relação entre o primeiro e o último vértice.
     addEdge(0, N_TO_REACH); // Creates relation 0 -> N_TO_REACH
 
+    //Adição das arestas.
     addEdge(0, 1);
     addEdge(1, 2);
     addEdge(2, 3);
